@@ -42,7 +42,7 @@ class _RecordingsPageState extends State<RecordingsPage> with SingleTickerProvid
   final _prefs = SharedPreferencesUtil();
   late final RecordingsController _controller;
 
-  bool _showMarkersOnly = false;
+  late bool _showMarkersOnly = _prefs.showMarkersOnly;
   RecordingFilterMode _filterMode = RecordingFilterMode.visible;
   // Persisted app-bar toggle: when true, ghost (discard) rows are dropped from
   // the conversations list. Only suppresses rows — the discards stay on disk.
@@ -674,7 +674,10 @@ class _RecordingsPageState extends State<RecordingsPage> with SingleTickerProvid
     if (controller.markerConversations.isNotEmpty) {
       controls.add(tapGlyph(
         tooltip: 'Toggle markers only',
-        onTap: () => setState(() => _showMarkersOnly = !_showMarkersOnly),
+        onTap: () => setState(() {
+          _showMarkersOnly = !_showMarkersOnly;
+          _prefs.showMarkersOnly = _showMarkersOnly;
+        }),
         glyph: FaIcon(
           markerMode ? FontAwesomeIcons.solidBookmark : FontAwesomeIcons.bookmark,
           size: iconSize,
@@ -819,7 +822,10 @@ class _RecordingsPageState extends State<RecordingsPage> with SingleTickerProvid
           SnackBar(content: Text('Deleted Marker at ${mc.markerTimeLabel}')),
         );
         if (_controller.markerConversations.isEmpty) {
-          setState(() => _showMarkersOnly = false);
+          setState(() {
+            _showMarkersOnly = false;
+            _prefs.showMarkersOnly = false;
+          });
         }
       }
     } catch (e) {
@@ -870,7 +876,10 @@ class _RecordingsPageState extends State<RecordingsPage> with SingleTickerProvid
     // were in markers-only view, its toggle disappears — so drop back to the
     // recordings list here instead of stranding the user on an empty view.
     if (mounted && _showMarkersOnly && _controller.markerConversations.isEmpty) {
-      setState(() => _showMarkersOnly = false);
+      setState(() {
+        _showMarkersOnly = false;
+        _prefs.showMarkersOnly = false;
+      });
     }
   }
 
@@ -1322,7 +1331,10 @@ class _RecordingsPageState extends State<RecordingsPage> with SingleTickerProvid
                                   if (controller.markerConversations.isEmpty) {
                                     WidgetsBinding.instance.addPostFrameCallback((_) {
                                       if (mounted && _showMarkersOnly && _controller.markerConversations.isEmpty) {
-                                        setState(() => _showMarkersOnly = false);
+                                        setState(() {
+                                          _showMarkersOnly = false;
+                                          _prefs.showMarkersOnly = false;
+                                        });
                                       }
                                     });
                                   }

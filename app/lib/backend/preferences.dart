@@ -64,6 +64,10 @@ class SharedPreferencesUtil {
   bool get hideGhosts => getBool('hideGhosts', defaultValue: false);
   set hideGhosts(bool v) => saveBool('hideGhosts', v);
 
+  // UI-visibility only: whether the recordings list is restricted to markers.
+  bool get showMarkersOnly => getBool('showMarkersOnly', defaultValue: false);
+  set showMarkersOnly(bool v) => saveBool('showMarkersOnly', v);
+
   // Per-mode button-action configs (6 slots: single / single-hold / double /
   // double-hold / triple / triple-hold; values are button_action_t indices
   // 0=None,1=Mute,2=Marker,3=Toggle LED,4=Record Start,5=Record Stop). The app
