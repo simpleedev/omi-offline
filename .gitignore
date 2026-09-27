@@ -104,7 +104,7 @@ builds-snapshot.md
 # pinned version, and says so itself (ccbuild.sh:122 — "An NCS or toolchain update
 # changes the firmware"). Built with NCS v2.9.0. Keep exactly one bundle tracked:
 # bump this line on each firmware release and git rm the one it replaces.
-!/releases/oo314.zip
+!/releases/oo315.zip
 
 # Exported Omi bin archives and shared debug logs — real recorded audio and
 # device logs pulled off a phone for analysis. Never commit these.
