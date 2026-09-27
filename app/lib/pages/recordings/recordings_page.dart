@@ -21,13 +21,16 @@ import 'package:omi/pages/recordings/batch_card.dart';
 import 'package:omi/pages/recordings/recording_player_page.dart';
 import 'package:omi/pages/recordings/marker_day_card.dart';
 import 'package:omi/pages/recordings/recordings_controller.dart';
+import 'package:omi/pages/recordings/recordings_view_toggles.dart';
 import 'package:omi/pages/settings/offline_audio_settings_page.dart';
 import 'package:omi/widgets/dialog.dart';
 import 'package:omi/widgets/battery_status_indicator.dart';
 
 // ─── Page ───────────────────────────────────────────────────────────────────
 class RecordingsPage extends StatefulWidget {
-  const RecordingsPage({super.key});
+  const RecordingsPage({super.key, this.controller});
+
+  final RecordingsController? controller;
 
   @override
   State<RecordingsPage> createState() => _RecordingsPageState();
@@ -359,7 +362,7 @@ class _RecordingsPageState extends State<RecordingsPage> with SingleTickerProvid
   @override
   void initState() {
     super.initState();
-    _controller = RecordingsController()..init();
+    _controller = widget.controller ?? (RecordingsController()..init());
     _selBarAnim = AnimationController(vsync: this, duration: const Duration(milliseconds: 220));
     _selBarCurve = CurvedAnimation(parent: _selBarAnim, curve: Curves.easeOutCubic, reverseCurve: Curves.easeInCubic);
     _scrollController.addListener(_onScroll);
@@ -370,7 +373,7 @@ class _RecordingsPageState extends State<RecordingsPage> with SingleTickerProvid
     _scrollController.removeListener(_onScroll);
     _scrollController.dispose();
     _selBarAnim.dispose();
-    _controller.dispose();
+    if (widget.controller == null) _controller.dispose();
     super.dispose();
   }
 
@@ -630,21 +633,16 @@ class _RecordingsPageState extends State<RecordingsPage> with SingleTickerProvid
     );
   }
 
-  /// Right-aligned list-view controls for the Conversations header: the
-  /// markers-only toggle, the ghost-visibility toggle, and the duration filter.
-  /// All three share one glyph size (so their tops and bottoms line up) and sit
-  /// in a tight cluster with only a hair of spacing between them, tap ink flash
-  /// suppressed. The markers-only toggle is always first (leftmost) so its
-  /// position is fixed; when markers-only is on the ghost + filter controls dim
-  /// to dark grey **in place** (rather than being removed) so the bookmark never
-  /// shifts. The filter funnel carries a tiny corner letter badge (M/H/A) naming
-  /// the active tab instead of a side label, so it too never moves as the tab
-  /// changes.
-  List<Widget> _buildListControls(RecordingsController controller) {
+  /// Right-aligned list-view controls for the Conversations header. The
+  /// marker and ghost toggles stay available without matching rows, and the
+  /// duration filter dims while markers-only is active. Their glyphs share a
+  /// size and sit in a tight cluster; the filter funnel carries a tiny corner
+  /// letter badge (M/H/A) naming the active tab.
+  List<Widget> _buildListControls() {
     // One glyph size for all three so their top/bottom pixels align; a tight
     // symmetric tap pad keeps them clustered with only a small gap.
     const double iconSize = 18;
-    const EdgeInsets tapPad = EdgeInsets.symmetric(horizontal: 5, vertical: 10);
+    const EdgeInsets tapPad = EdgeInsets.symmetric(horizontal: 12, vertical: 10);
     // Dark grey the ghost + filter dim to while markers-only is active.
     final Color dimmed = Colors.grey.shade700;
     final markerMode = _showMarkersOnly;
@@ -658,58 +656,24 @@ class _RecordingsPageState extends State<RecordingsPage> with SingleTickerProvid
           child: child,
         );
 
-    Widget tapGlyph({required Widget glyph, VoidCallback? onTap, required String tooltip}) => Tooltip(
-          message: tooltip,
-          child: GestureDetector(
-            behavior: HitTestBehavior.opaque,
-            onTap: onTap,
-            child: Padding(padding: tapPad, child: glyph),
-          ),
-        );
-
     final controls = <Widget>[];
 
-    // Markers-only toggle. Always first/leftmost so it stays put: the ghost +
-    // filter controls to its right dim in place rather than disappearing.
-    if (controller.markerConversations.isNotEmpty) {
-      controls.add(tapGlyph(
-        tooltip: 'Toggle markers only',
-        onTap: () => setState(() {
-          _showMarkersOnly = !_showMarkersOnly;
-          _prefs.showMarkersOnly = _showMarkersOnly;
-        }),
-        glyph: FaIcon(
-          markerMode ? FontAwesomeIcons.solidBookmark : FontAwesomeIcons.bookmark,
-          size: iconSize,
-          color: markerMode ? Colors.amber : Colors.white,
-        ),
-      ));
-    }
-
-    // Ghost-visibility toggle — hides/shows every discard ("ghost") row across
-    // the list. Only surfaced when there are ghosts to manage. Persisted;
-    // suppresses rows only (the discards stay on disk, recoverable). Hidden
-    // during a ghost multi-select: hiding would filter out the very rows being
-    // selected, stranding the picked IDs behind Recover/Delete actions that then
-    // no-op. (A recording selection is unaffected, so the toggle stays.) In
-    // markers-only mode it dims to dark grey and goes inert instead of vanishing.
-    if (!(_inSelectionMode && _selType == RecordingRowType.ghost) &&
-        controller.batches.any((b) => b.discards.isNotEmpty)) {
-      controls.add(tapGlyph(
-        tooltip: _hideGhosts ? 'Show ghosts' : 'Hide ghosts',
-        onTap: markerMode
-            ? null
-            : () => setState(() {
-                  _hideGhosts = !_hideGhosts;
-                  _prefs.hideGhosts = _hideGhosts;
-                }),
-        glyph: FaIcon(
-          FontAwesomeIcons.ghost,
-          size: iconSize,
-          color: markerMode ? dimmed : (_hideGhosts ? Colors.grey.shade600 : Colors.orange.shade300),
-        ),
-      ));
-    }
+    // Both preferences remain visible without matching rows. Ghost visibility
+    // can also be changed in markers-only mode; only the marker rows render in
+    // that mode, regardless of the ghost preference.
+    controls.add(RecordingsViewToggles(
+      markersOnly: _showMarkersOnly,
+      hideGhosts: _hideGhosts,
+      showGhostToggle: !(_inSelectionMode && _selType == RecordingRowType.ghost),
+      onMarkersOnlyChanged: (value) => setState(() {
+        _showMarkersOnly = value;
+        _prefs.showMarkersOnly = value;
+      }),
+      onHideGhostsChanged: (value) => setState(() {
+        _hideGhosts = value;
+        _prefs.hideGhosts = value;
+      }),
+    ));
 
     // Duration filter — only meaningful when short conversations are hidden
     // (filterMinDurationSeconds > 0). A tiny letter badge in the funnel's
@@ -821,12 +785,6 @@ class _RecordingsPageState extends State<RecordingsPage> with SingleTickerProvid
         messenger.showSnackBar(
           SnackBar(content: Text('Deleted Marker at ${mc.markerTimeLabel}')),
         );
-        if (_controller.markerConversations.isEmpty) {
-          setState(() {
-            _showMarkersOnly = false;
-            _prefs.showMarkersOnly = false;
-          });
-        }
       }
     } catch (e) {
       if (mounted) {
@@ -872,15 +830,6 @@ class _RecordingsPageState extends State<RecordingsPage> with SingleTickerProvid
       ),
     );
     await _controller.reloadBatchesSilently();
-    // The player page can delete the marker. If that emptied the list while we
-    // were in markers-only view, its toggle disappears — so drop back to the
-    // recordings list here instead of stranding the user on an empty view.
-    if (mounted && _showMarkersOnly && _controller.markerConversations.isEmpty) {
-      setState(() {
-        _showMarkersOnly = false;
-        _prefs.showMarkersOnly = false;
-      });
-    }
   }
 
   Future<void> _openConversation(Conversation conv) async {
@@ -1169,7 +1118,7 @@ class _RecordingsPageState extends State<RecordingsPage> with SingleTickerProvid
                           // here (as list controls) rather than the action-dense app
                           // bar, uniformly sized, vertically centered and evenly
                           // spaced. See [_buildListControls].
-                          ..._buildListControls(controller),
+                          ..._buildListControls(),
                         ],
                       ),
                       // "Last synced …" sits directly under the header; renders
@@ -1322,22 +1271,6 @@ class _RecordingsPageState extends State<RecordingsPage> with SingleTickerProvid
                           : Builder(
                               builder: (context) {
                                 if (_showMarkersOnly) {
-                                  // Safety net for every path that can empty the
-                                  // markers list while this view is open (player
-                                  // delete, list delete, a background reload after an
-                                  // on-device sync): once empty, the header toggle is
-                                  // gone, so fall back to the recordings list instead
-                                  // of stranding the user here.
-                                  if (controller.markerConversations.isEmpty) {
-                                    WidgetsBinding.instance.addPostFrameCallback((_) {
-                                      if (mounted && _showMarkersOnly && _controller.markerConversations.isEmpty) {
-                                        setState(() {
-                                          _showMarkersOnly = false;
-                                          _prefs.showMarkersOnly = false;
-                                        });
-                                      }
-                                    });
-                                  }
                                   final byDate = _groupMarkersByDate();
                                   final dates = byDate.keys.toList()..sort((a, b) => b.compareTo(a));
                                   return RefreshIndicator(

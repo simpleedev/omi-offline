@@ -111,6 +111,14 @@ void main() {
     });
 
     test('All other properties read and write correctly with expected defaults', () async {
+      expect(prefsUtil.showMarkersOnly, false);
+      prefsUtil.showMarkersOnly = true;
+      expect(prefsUtil.showMarkersOnly, true);
+
+      expect(prefsUtil.hideGhosts, false);
+      prefsUtil.hideGhosts = true;
+      expect(prefsUtil.hideGhosts, true);
+
       // Offline Audio Processing
       expect(prefsUtil.forceSyncSkipConfirm, false);
       prefsUtil.forceSyncSkipConfirm = true;
