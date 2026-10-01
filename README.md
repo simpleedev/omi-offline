@@ -1,3 +1,8 @@
+> [!IMPORTANT]
+> **Omi Offline has been retired and is now memrii.**
+> Active development continues at [simplee-labs/memrii](https://github.com/simplee-labs/memrii).
+> This repository is archived for historical reference.
+
 # Omi Offline
 
 A personal fork of the [Omi](https://github.com/BasedHardware/omi) wearable project, rebuilt entirely around local, private audio capture and processing. No cloud dependencies, no internet requirement — audio stays on your device until you choose to export it.
